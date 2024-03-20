@@ -1,1 +1,12 @@
+Create a Raw data view
+
+CREATE OR REPLACE VIEW customer_journey AS
+SELECT customer_id,GROUP_CONCAT(plan_name SEPARATOR' - ') AS customer_map, GROUP_CONCAT(start_date SEPARATOR',') AS time_diff,
+SUM(price) AS total_paid
+FROM subscriptions 
+JOIN plans USING (plan_id)
+GROUP BY customer_id
+HAVING customer_id<=8;
+
+Analyze the View about the plan changing
 
