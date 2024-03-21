@@ -1,3 +1,5 @@
+SQL Case Study #3 (Week 3) - Foodie Fi
+
 Create a Raw data view
 
 CREATE OR REPLACE VIEW customer_journey AS
