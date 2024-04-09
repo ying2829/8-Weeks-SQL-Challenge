@@ -6,7 +6,7 @@ Welcome to the Week-3---Foodie-Fi
 Q1: Based off the 8 sample customers provided in the sample from the subscriptions table, write a brief description about each customer’s onboarding journey.Try to keep it as short as possible - you may also want to run some sort of join to make your explanations a bit easier!
 
 Create Raw data to analyse the following questions:
-1. customer changing plan journey, how many routes happened within these 8 customers?
+1. Customer changing plan journey, how many routes happened within these 8 customers?
 2. How long does each customer take to swift to another plan?
 3. How much does we earn from each customer?
 
