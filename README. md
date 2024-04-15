@@ -1,0 +1,11 @@
+WITH raw_name AS(
+SELECT `Kaggle_casestudy.test`name,`Kaggle_casestudy.train`name, `Kaggle_casestudy.test`.Survived,`Kaggle_casestudy.train`.Survived
+FROM `Kaggle_casestudy.test`, `Kaggle_casestudy.train`),
+split_name AS (
+SELECT REGEXP_EXTRACT(unknown_name, r'^\s*(.*?),\s*.*') AS unknow_fname,
+REGEXP_EXTRACT(unknown_name,  r',\s*(.*?)\s*$') AS unknow_lname,
+REGEXP_EXTRACT(origin_name, r'^\s*(.*?),\s*.*') AS origin_fname,
+REGEXP_EXTRACT(origin_name, r',\s*(.*?)\s*$') AS origin_lname
+FROM raw_name
+)
+SELECT * FROM split_name
