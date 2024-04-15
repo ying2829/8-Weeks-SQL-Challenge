@@ -1,5 +1,5 @@
 WITH raw_name AS(
-SELECT `Kaggle_casestudy.test`name,`Kaggle_casestudy.train`name, `Kaggle_casestudy.test`.Survived,`Kaggle_casestudy.train`.Survived
+SELECT `Kaggle_casestudy.test`.Name AS unknown_name,`Kaggle_casestudy.train`.Name AS origin_name, `Kaggle_casestudy.test`.Survived,`Kaggle_casestudy.train`.Survived
 FROM `Kaggle_casestudy.test`, `Kaggle_casestudy.train`),
 split_name AS (
 SELECT REGEXP_EXTRACT(unknown_name, r'^\s*(.*?),\s*.*') AS unknow_fname,
