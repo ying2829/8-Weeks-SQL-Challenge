@@ -1,8 +1,22 @@
+### Kaggle_case study - Titanic - Machine Learning from Disaster
+
+Create a view which  group by the same ticket number to fentch the raw data abou
+```mysql
+SELECT Ticket,`case-study-titanic.Kaggle_casestudy.train`Survived,`case-study-titanic.Kaggle_casestudy.train`. PassengerId AS train_passenger,`Kaggle_casestudy.test`.PassengerId AS test_passenger,`case-study-titanic.Kaggle_casestudy.train`.Name AS train_name,`Kaggle_casestudy.test`. Name AS test_name, `case-study-titanic.Kaggle_casestudy.train`.Age AS train_age, `Kaggle_casestudy.test`.Age AS test_age,`case-study-titanic.Kaggle_casestudy.train`.sex AS train_sex,`Kaggle_casestudy.test`. sex AS test_sex,`case-study-titanic.Kaggle_casestudy.train`.Embarked AS train_embarked,`Kaggle_casestudy.test`. Embarked AS test_embarked
+FROM `case-study-titanic.Kaggle_casestudy.train` 
+INNER JOIN `Kaggle_casestudy.test` USING (ticket)
+WHERE `case-study-titanic.Kaggle_casestudy.train`.SibSp=0 AND `case-study-titanic.Kaggle_casestudy.train`.Parch=0
+ORDER BY Ticket
+```
+
+
+```mysql
+CREATE OR REPLACE TABLE `Kaggle_casestudy.predition` AS
 WITH raw_data AS (
-  SELECT Survived,train_name,test_name, train_age,test_age,train_sex,test_sex,train_embarked,test_embarked
+  SELECT Survived,train_name,test_name, train_age,test_age,train_sex,test_sex,train_embarked,test_embarked,test_passenger
 FROM `Kaggle_casestudy.single_list_byticket`),
 split_name AS (
-  SELECT Survived,train_name,test_name,
+  SELECT Survived,train_name,test_name,test_passenger,
 REGEXP_EXTRACT(train_name, r'^\s*(.*?),\s*.*') AS train_fname,
 REGEXP_EXTRACT(train_name,  r',\s*(.*?)\s*$') AS train_lname,
 REGEXP_EXTRACT(test_name, r'^\s*(.*?),\s*.*') AS test_fname,
@@ -11,16 +25,18 @@ train_age,test_age,train_sex,test_sex,train_embarked,test_embarked
 FROM raw_data),
 final_data AS (
   SELECT 
-Survived,train_name,test_name,
-IF(split_name.train_fname=split_name.test_fname,true,false) AS first_name,
-IF(split_name.train_lname=split_name.test_lname,true,false) AS last_name,
+Survived,train_name,test_name,test_passenger,
+IF(split_name.train_fname=split_name.test_fname,"1","0") AS first_name,
+IF(split_name.train_lname=split_name.test_lname,"1","0") AS last_name,
 train_age,test_age,train_sex,test_sex,train_embarked,test_embarked
 FROM split_name),
 tf_data AS ( 
-SELECT Survived, first_name,last_name,
-IF(train_age=test_age, TRUE,FALSE) AS age,
-IF (train_sex=test_sex,TRUE,FALSE) AS sex,
-IF (train_embarked=test_embarked, TRUE,FALSE) AS embarked
+SELECT Survived, first_name,last_name,test_passenger,
+IF(train_age=test_age, "1","0") AS age,
+IF (train_sex=test_sex,"1","0") AS sex,
+IF (train_embarked=test_embarked, "1","0") AS embarked
 FROM final_data)
-SELECT 
+SELECT *
+FROM tf_data
+```
 
