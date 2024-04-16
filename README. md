@@ -2,16 +2,25 @@ WITH raw_data AS (
   SELECT Survived,train_name,test_name, train_age,test_age,train_sex,test_sex,train_embarked,test_embarked
 FROM `Kaggle_casestudy.single_list_byticket`),
 split_name AS (
-  SELECT Survived,train_name,test_name
+  SELECT Survived,train_name,test_name,
 REGEXP_EXTRACT(train_name, r'^\s*(.*?),\s*.*') AS train_fname,
 REGEXP_EXTRACT(train_name,  r',\s*(.*?)\s*$') AS train_lname,
 REGEXP_EXTRACT(test_name, r'^\s*(.*?),\s*.*') AS test_fname,
 REGEXP_EXTRACT(test_name, r',\s*(.*?)\s*$') AS test_lname,
 train_age,test_age,train_sex,test_sex,train_embarked,test_embarked
-FROM raw_data)
-SELECT 
+FROM raw_data),
+final_data AS (
+  SELECT 
 Survived,train_name,test_name,
 IF(split_name.train_fname=split_name.test_fname,true,false) AS first_name,
 IF(split_name.train_lname=split_name.test_lname,true,false) AS last_name,
 train_age,test_age,train_sex,test_sex,train_embarked,test_embarked
-FROM split_name
+FROM split_name),
+tf_data AS ( 
+SELECT Survived, first_name,last_name,
+IF(train_age=test_age, TRUE,FALSE) AS age,
+IF (train_sex=test_sex,TRUE,FALSE) AS sex,
+IF (train_embarked=test_embarked, TRUE,FALSE) AS embarked
+FROM final_data)
+SELECT 
+
