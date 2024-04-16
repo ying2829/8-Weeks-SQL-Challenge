@@ -1,4 +1,4 @@
-### Kaggle_case study - Titanic - Machine Learning from Disaster
+#  Kaggle_case study: Titanic - Machine Learning from Disaster
 
 Create a view which  group by the same ticket number to fentch the raw data abou
 ```mysql
