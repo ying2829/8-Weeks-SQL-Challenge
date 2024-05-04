@@ -1,5 +1,7 @@
 #  Case Study #4: Data Bank
 
+Welcome to the Week-4---Data Bank
+
 ### A. Customer Nodes Exploration
 
 1. How many unique nodes are there on the Data Bank system?
@@ -144,3 +146,155 @@ GROUP BY customer_id,month_id,month_name
 
 
 5. What is the percentage of customers who increase their closing balance by more than 5%?
+This case is an extension of question 4. So, from the last question, we have a table about the end balance of each month for each customer. Therefore, we only need to use the LEAD function to fetch the amount of the following balance. Then, for the question which is to find the percentage of the customer who increases their closing balance by 5%, you will know from the table there something we need to be very careful which is the positive and negative values. So, we need to use absolute value to calculate and filter the value is lower than ±5%. In the end, we can calculate the percentage of the customer who fit to the condition.
+```Mysql
+USE data_bank;
+WITH cte AS (SELECT customer_id,MONTH(txn_date) AS month_id,MONTHNAME(txn_date) AS month_name ,txn_type,
+CASE WHEN txn_type="purchase" THEN 0-txn_amount
+WHEN txn_type="withdrawal" THEN 0-txn_amount
+ELSE txn_amount
+END AS amount
+FROM customer_transactions
+ORDER BY customer_id,MONTH(txn_date)),
+cte1 AS (SELECT customer_id,month_id,month_name,
+SUM(CASE WHEN txn_type = 'deposit' THEN amount ELSE 0 END) AS deposit,
+SUM(CASE WHEN txn_type = 'purchase' THEN amount ELSE 0 END) AS purchase,
+SUM(CASE WHEN txn_type = 'withdrawal' THEN amount ELSE 0 END) AS withdrawal
+FROM cte
+GROUP BY customer_id,month_id,month_name
+ORDER BY customer_id,MONTH(txn_date)),
+cte2 AS (SELECT customer_id,month_id,month_name,deposit+purchase+withdrawal AS total
+FROM cte1
+GROUP BY customer_id,month_id,month_name),
+cte3 AS (SELECT customer_id,month_id,month_name,total,
+LEAD(total) OVER( PARTITION BY customer_id ORDER BY month_id) AS following_balance
+FROM cte2),
+cte4 AS (SELECT customer_id,month_id,month_name,
+ROUND( (ABS(total)-ABS(following_balance))/ABS(total)) AS increase_percentage
+FROM cte3),
+cte5 AS (SELECT customer_id,increase_percentage
+FROM cte4
+WHERE increase_percentage IS NOT NULL AND (increase_percentage >= 5 OR increase_percentage <= -5))
+SELECT CONCAT(COUNT(DISTINCT(customer_id))/500*100,"%") AS percentage
+FROM cte5
+```
+![image](https://github.com/ying2829/8-Weeks-SQL-Challenge/assets/162821565/3fb8dba4-f6c9-4e64-a3df-ddf178fff269)
+
+
+### C. Data Allocation Challenge
+
+To test out a few different hypotheses - the Data Bank team wants to run an experiment where different groups of customers would be allocated data using 3 different options:
+
+
+* Option 3: data is updated real-time
+For this multi-part challenge question - you have been requested to generate the following data elements to help the Data Bank team estimate how much data will need to be provisioned for each option:
+
+* running customer balance column that includes the impact each transaction
+```Mysql
+WITH cte AS (SELECT customer_id,txn_date,txn_type,
+CASE WHEN txn_type="deposit" THEN txn_amount
+ELSE -txn_amount
+END AS balance
+FROM customer_transactions
+ORDER BY customer_id)
+SELECT customer_id,txn_date,txn_type, balance,
+SUM(balance) OVER (PARTITION BY customer_id ORDER BY customer_id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS rest_balance
+FROM cte
+GROUP BY customer_id, txn_date,txn_type, balance
+ORDER BY customer_id;
+```
+![image](https://github.com/ying2829/8-Weeks-SQL-Challenge/assets/162821565/da5f3e4d-d7fb-4313-943e-afc4e3d49e43)
+
+* customer balance at the end of each month
+
+This is identical to question 4 in part B.
+* minimum, average and maximum values of the running balance for each customer
+```Mysql
+WITH cte AS (SELECT customer_id,txn_date,txn_type,
+CASE WHEN txn_type="deposit" THEN txn_amount
+ELSE -txn_amount
+END AS balance
+FROM customer_transactions
+ORDER BY customer_id),
+cte1 AS (SELECT customer_id,txn_date,txn_type, balance,
+SUM(balance) OVER (PARTITION BY customer_id ORDER BY customer_id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS rest_balance
+FROM cte
+GROUP BY customer_id, txn_date,txn_type, balance
+ORDER BY customer_id)
+SELECT customer_id, 
+MIN(rest_balance)  AS minimum_balance,
+MAX(rest_balance)  AS max_balance,
+AVG(rest_balance) AS avg_balance
+FROM cte1
+GROUP BY customer_id
+```
+![image](https://github.com/ying2829/8-Weeks-SQL-Challenge/assets/162821565/1686928c-c1be-42c2-ad6d-bc072bdfec07)
+
+After generating the data elements, now we can have a look at each option:
+
+* **Option 1: data is allocated based off the amount of money at the end of the previous month**
+```Mysql
+WITH cte AS (SELECT customer_id,MONTH(txn_date) AS month_id,MONTHNAME(txn_date) AS month_name ,txn_type,
+CASE WHEN txn_type="purchase" THEN 0-txn_amount
+WHEN txn_type="withdrawal" THEN 0-txn_amount
+ELSE txn_amount
+END AS amount
+FROM customer_transactions
+ORDER BY customer_id,MONTH(txn_date)),
+cte1 AS (SELECT customer_id,month_id,month_name,
+SUM(CASE WHEN txn_type = 'deposit' THEN amount ELSE 0 END) AS deposit,
+SUM(CASE WHEN txn_type = 'purchase' THEN amount ELSE 0 END) AS purchase,
+SUM(CASE WHEN txn_type = 'withdrawal' THEN amount ELSE 0 END) AS withdrawal
+FROM cte
+GROUP BY customer_id,month_id,month_name
+ORDER BY customer_id,MONTH(txn_date)),
+cte2 AS (SELECT customer_id,month_id,month_name,deposit+purchase+withdrawal AS total
+FROM cte1
+GROUP BY customer_id,month_id,month_name),
+cte3 AS (SELECT customer_id,month_id,month_name,total, LAG(total) OVER(PARTITION BY customer_id ORDER BY customer_id) AS last_month_balance
+FROM cte2)
+SELECT month_id,month_name,SUM(last_month_balance) AS total_allocation
+FROM cte3
+GROUP BY month_id,month_name
+ORDER BY month_id
+```
+![image](https://github.com/ying2829/8-Weeks-SQL-Challenge/assets/162821565/0cfa88f6-cd22-4b19-9334-8799a60619b7)
+
+From the table, we can see that all the allocation is based on the previous month, so there is no data in Jan. Also, the reason for the negative value is that some accounts of the customers hold a negative balance. However, it is not appropriate for customers to receive negative storage. Therefore, I made an assumption that the negative balance was a debit, I converted it into a positive, and then I could have a full page of the accurate total allocation storage.
+
+```MySQL
+WITH cte AS (SELECT customer_id,MONTH(txn_date) AS month_id,MONTHNAME(txn_date) AS month_name ,txn_type,
+CASE WHEN txn_type="purchase" THEN 0-txn_amount
+WHEN txn_type="withdrawal" THEN 0-txn_amount
+ELSE txn_amount
+END AS amount
+FROM customer_transactions
+ORDER BY customer_id,MONTH(txn_date)),
+cte1 AS (SELECT customer_id,month_id,month_name,
+SUM(CASE WHEN txn_type = 'deposit' THEN amount ELSE 0 END) AS deposit,
+SUM(CASE WHEN txn_type = 'purchase' THEN amount ELSE 0 END) AS purchase,
+SUM(CASE WHEN txn_type = 'withdrawal' THEN amount ELSE 0 END) AS withdrawal
+FROM cte
+GROUP BY customer_id,month_id,month_name
+ORDER BY customer_id,MONTH(txn_date)),
+cte2 AS (SELECT customer_id,month_id,month_name,deposit+purchase+withdrawal AS total
+FROM cte1
+GROUP BY customer_id,month_id,month_name),
+cte3 AS (SELECT customer_id,month_id,month_name,total, LAG(total) OVER(PARTITION BY customer_id ORDER BY customer_id) AS last_month_balance
+FROM cte2)
+SELECT month_id,month_name, 
+SUM(ABS(last_month_balance)) AS last_month_balance
+FROM cte3
+GROUP BY month_id,month_name
+HAVING last_month_balance IS NOT NULL
+ORDER BY month_id
+```
+![image](https://github.com/ying2829/8-Weeks-SQL-Challenge/assets/162821565/61e885b2-f770-4552-b2b9-944b1ecc8340)
+
+In this case, I put the absolute value to make sure all of them are positive. 
+
+_Insight_
+1. From the observation period, it indicated that the allocation data is flexible which means that Data usage or requirements may fluctuate at different times.
+2. The amount in March is a peak compared to the rest months. And, compared to February, it shows a 120% increase in data storage needs or a higher demand for data resources.
+3. In April, it indicated that there was a nearly 71% drop compared to last month.
+
