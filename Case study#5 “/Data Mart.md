@@ -192,26 +192,96 @@ Using this analysis approach - answer the following questions:
 
 * What is the total sales for the 4 weeks before and after 2020-06-15? What is the growth or reduction rate in actual values and percentage of sales?
 
-First of all, we should know which week is 2020-06-15, and then we can categorize the data into before and after by the definition. Once this is done, we can use the sum function to calculate.
+First, we should know which week is 2020-06-15, and then we can categorize the data into before and after by definition. Once this is done, we can use the sum function to calculate. We can also use the result of the calculation to calculate the growth.
+
 ```MySQL
-WITH cte AS (SELECT week_date,CASE WHEN week_date<"2020-06-15" THEN "before"
+WITH cte1 AS (SELECT week_date,week_number,calender_year,
+CASE WHEN week_date<"2020-06-15" THEN "before"
 WHEN week_date="2020-06-15" THEN "baseline"
 ELSE "after" 
-END AS category,
-week_number,sales
+END AS category, SUM(sales) AS total_sales
 FROM clean_date
-ORDER BY week_date),
-cte1 AS( SELECT category, week_number,SUM(sales) AS total_sale
-FROM cte
-GROUP BY category, week_number
-HAVING week_number IN (20,21,22,23,25,26,27,28)
-ORDER BY  week_number )
-SELECT category,SUM(total_sale) AS total_sale
-FROM cte1
-GROUP BY category
-ORDER BY category DESC
+GROUP BY week_date,week_number,calender_year,
+CASE WHEN week_date<"2020-06-15" THEN "before"
+WHEN week_date="2020-06-15" THEN "baseline"
+ELSE "after" 
+END
+HAVING calender_year="2020" AND week_number IN (20,21,22,23,25,26,27,28)),
+cte2 AS (SELECT SUM(CASE WHEN category="before" THEN total_sales END) AS before_sales,
+SUM(CASE WHEN category="after" THEN total_sales END) AS after_sales
+FROM cte1)
+SELECT after_sales-before_sales AS sale_variance,
+ROUND((after_sales-before_sales)/before_sales*100,2) AS percentage_variance
+FROM cte2
 ```
-![image](https://github.com/user-attachments/assets/37d60d7a-4d5d-4380-b9e8-1bb29c4b9926)
+![image](https://github.com/user-attachments/assets/a042c12f-03fb-41a7-861b-9ad5b8dde0d3)
+
+
+
 
 What about the entire 12 weeks before and after?
+
+```MySQL
+WITH cte1 AS (SELECT week_date,week_number,calender_year,
+CASE WHEN week_date<"2020-06-15" THEN "before"
+WHEN week_date="2020-06-15" THEN "baseline"
+ELSE "after" 
+END AS category, SUM(sales) AS total_sales
+FROM clean_date
+GROUP BY week_date,week_number,calender_year,
+CASE WHEN week_date<"2020-06-15" THEN "before"
+WHEN week_date="2020-06-15" THEN "baseline"
+ELSE "after" 
+END
+HAVING calender_year="2020"),
+cte2 AS (SELECT SUM(CASE WHEN category="before" THEN total_sales END) AS before_sales,
+SUM(CASE WHEN category="after" THEN total_sales END) AS after_sales
+FROM cte1)
+SELECT after_sales-before_sales AS sale_variance,
+ROUND((after_sales-before_sales)/before_sales*100,2) AS percentage_variance
+FROM cte2
+```
+![image](https://github.com/user-attachments/assets/7e046d1c-c8c6-4998-8045-18d09af07239)
+
 How do the sale metrics for these 2 periods before and after compare with the previous years in 2018 and 2019?
+
+First, we need to clarify and define the timeframe to answer this question. 
+
+* 4 weeks before and after period in 2018, 2019, and 2020.
+```MySQL
+WITH cte1 AS (SELECT week_number,calender_year, SUM(sales) AS total_sales
+FROM clean_date
+GROUP BY week_number,calender_year
+HAVING week_number IN (20,21,22,23,25,26,27,28)),
+cte2 AS (SELECT calender_year,
+SUM(CASE WHEN week_number IN (20,21,22,23) THEN total_sales END) AS before_total_sales,
+SUM(CASE WHEN week_number IN(25,26,27,28) THEN total_sales END) AS after_total_sales
+FROM cte1
+GROUP BY calender_year)
+SELECT calender_year,after_total_sales-before_total_sales AS sale_variance,
+ROUND((after_total_sales-before_total_sales)/before_total_sales*100,2) AS percentage_variance
+FROM cte2
+ORDER BY calender_year
+```
+![image](https://github.com/user-attachments/assets/e348aeab-bca9-404a-852f-913838c1eec0)
+
+Therefore, the table shows that the company made positive changes within the same period in 2018 and 2019. It seems that the sales in 2018 were better than those in 2019 because the variance percentage was greater. However, in 2020 within the same period, the data indicated that the sales amount had a dropdown because of the package changes. For the long-term observation, the sales continue dropping down from 0.98 to -0.47.
+
+* 12 weeks before and after period in 2018, 2019, and 2020.
+```MySQL
+WITH cte1 AS (SELECT week_number,calender_year, SUM(sales) AS total_sales
+FROM clean_date
+GROUP BY week_number,calender_year),
+cte2 AS (SELECT calender_year,
+SUM(CASE WHEN week_number BETWEEN 12 AND 23 THEN total_sales END) AS before_total_sales,
+SUM(CASE WHEN week_number BETWEEN 25 AND 35 THEN total_sales END) AS after_total_sales
+FROM cte1
+GROUP BY calender_year)
+SELECT calender_year,after_total_sales-before_total_sales AS sale_variance,
+ROUND((after_total_sales-before_total_sales)/before_total_sales*100,2) AS percentage_variance
+FROM cte2
+ORDER BY calender_year
+```
+![image](https://github.com/user-attachments/assets/db693f69-42e1-42ac-b585-efbaa61f2ee9)
+
+From 2018 to 2019, there was a substantial decline in financial performance, with an increase in losses of 159,716,572 units. This represents a worsening decline of 1.85 percentage points (from -6.57% in 2018 to -8.42% in 2019). From 2019 to 2020, the losses continued to grow, increasing by 142,521,630 units, with the percentage change worsening by another 1.72 percentage points (from -8.42% to -10.14%). Over the three years, the company or entity experienced a continuous and accelerated decline. The rate of losses is not only increasing but the percentage change is becoming more severe with each passing year. The percentage decline over the years shows a pattern of increasing financial strain or decreased sales, which could be due to external factors (such as market conditions, increased competition, or macroeconomic events) or internal challenges (e.g., operational inefficiencies, poor financial management, or declining market demand).
